@@ -1,0 +1,68 @@
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#include <LiquidCrystal_I2C.h>
+
+// DS18B20 sensor setup
+#define ONE_WIRE_BUS 2 // DS18B20 data pin connected to digital pin 2
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature sensors(&oneWire);
+const int relay=6;
+// ACS712 sensor setup
+#define ACS712_PIN A0 // ACS712 OUT pin connected to analog pin A0
+// Adjust these values based on your sensor's sensitivity (e.g., 100mV/A for 20A version)
+const float ACSsensitivity = 0.100; // 100mV per Ampere 
+
+// I2C LCD setup (address 0x27 or 0x3F are common, adjust as needed)
+LiquidCrystal_I2C lcd(0x27, 16, 2); // 16 columns, 2 rows LCD
+
+void setup() {
+  Serial.begin(9600);
+  sensors.begin(); // Start the DS18B20 sensor
+  lcd.init();      // Initialize the I2C LCD
+  lcd.backlight(); // Turn on backlight
+  lcd.print("Monitoring System");
+  delay(2000);
+  lcd.clear();
+  pinMode(relay,OUTPUT);
+}
+
+void loop() {
+  // Read DS18B20 temperature
+  sensors.requestTemperatures();
+  float temperatureC = sensors.getTempCByIndex(0); // Get temperature from the first sensor
+
+  // Read ACS712 current
+  int rawValue = analogRead(ACS712_PIN); // Read analog value from the sensor
+  float voltage = (rawValue / 1023.0) * 5000; // Convert raw reading to mV
+  // Voltage at zero current is typically 2500mV (2.5V)
+  float current = (voltage - 2500) / ACSsensitivity; 
+  
+  // Display on LCD
+  lcd.clear();
+  lcd.setCursor(0, 0); // Column 0, Row 0
+  lcd.print("Temp: ");
+  lcd.print(temperatureC);
+  lcd.print((char)223); // Degree symbol
+  lcd.print("C");
+
+  lcd.setCursor(0, 1); // Column 0, Row 1
+  lcd.print("Current: ");
+  lcd.print((current)); // Display absolute value of current
+  lcd.print("A");
+if(temperatureC>45)
+{
+  digitalWrite(relay,HIGH);
+  delay(1000);
+}
+else
+{
+  digitalWrite(relay,LOW);
+  delay(2000);
+}
+if((current)>2)
+{
+ digitalWrite(relay,HIGH);
+ delay(1000); 
+}
+ // Update every 2 seconds
+}
